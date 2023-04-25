@@ -74,7 +74,7 @@ Because the `id` column is the primary key, it will always be indexed and the qu
 
 ## Usage
 
-First, include the `CreatedId` module into your models.
+First, include the `CreatedId` module into your models. Note that any model you wish to include this module in must have a numeric primary key.
 
 ```ruby
 class Task < ApplicationRecord
@@ -94,23 +94,26 @@ Task.where(user_id: 1000).created_before(7.days.ago)
 Task.created_between(25.hour.ago, 24.hours.ago)
 ```
 
-You'll then need to set up a periodic task to store the id ranges for each do. For each model that includes `CreatedId`, you need to run the `store_created_id_for` once per day. This task should be run shortly after midnight UTC. You should not run it exactly at midnight since delaying a short time allows some wiggle room in case there are any race conditions caused by slow to commit transactions. If a transaction started at 23:59UTC and finished at 00:01UTC, it would create a hole in the id range if you calculated the range exactly at midnight. The query logic never relies on just the id ranges, so they never need to be 100% up to date.
+You'll then need to set up a periodic task to store the id ranges for your models. For each model that includes `CreatedId`, you need to run the `store_created_id_for` once per hour. This task should be run shortly after the top of the hour.
 
 ```ruby
-Task.store_created_id_for(Date.yesterday)
+Task.store_created_id_for(1.hour.ago)
 ```
 
 Finally, you'll need to run a script to calculate the id ranges for all of your existing data.
 
 ```ruby
-(Task.first(created_at).utc.to_date...Date.current).each do |date|
-  Task.store_created_id_for(date)
+first_time = Task.first(created_at).utc
+time = Time.utc(first_time.year, first_time.month, first_time.date, first_time.hour)
+while time < Time.now
+  Task.store_created_id_for(time)
+  time += 3600
 end
 ```
 
-Don't worry if the id range for a specific do not get recorded, the queries will still work and they can be calcuated at any time. Queries will just be a bit less efficient if the ranges don't exist because queries will be given a large range of ids to filter on.
+Don't worry if the id range for a specific hour does not get recorded, the queries will still work and they can be re-calcuated at any time. Queries will just be a bit less efficient if the ranges don't exist because queries will be given a large span of ids to filter on.
 
-There is a hard requirement for using this gem that you do not change the `created_at` value after a row is inserted since this can mess up the assumption about the correlation between ids and `created_at` timestamps. An error will be thrown if you try to change a record's timestamp after the id range has been created. The query logic can handle small variations between id order and timestamp order (i.e. if id 1000 has a timestamp a few seconds after id 1001).
+There is an additional requirement for using this gem that you do not change the `created_at` value after a row is inserted since this can mess up the assumption about the correlation between ids and `created_at` timestamps. An error will be thrown if you try to change a record's timestamp after the id range has been created. The query logic can handle small variations between id order and timestamp order (i.e. if id 1000 has a timestamp a few seconds after id 1001).
 
 ## Installation
 

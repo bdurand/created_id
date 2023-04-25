@@ -22,10 +22,10 @@ module CreatedId
   end
 
   module ClassMethods
-    def store_created_id_for(date)
-      min_id = CreatedId::Model.calculate_min_id(self, date)
+    def store_created_id_for(time)
+      min_id = CreatedId::Model.calculate_min_id(self, time)
       if min_id
-        CreatedId::Model.save_created_id(self, date, min_id)
+        CreatedId::Model.save_created_id(self, time, min_id)
       end
     end
   end
