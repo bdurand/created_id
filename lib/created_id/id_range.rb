@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 module CreatedId
+  # This model stores the id ranges for other models by the hour. It is not meant to be
+  # accessed directly.
   class IdRange < ActiveRecord::Base
     self.table_name = "created_ids"
 
@@ -17,11 +19,20 @@ module CreatedId
     validates_uniqueness_of :hour, scope: :class_name
 
     class << self
+      # Get the minimum id for a class created in a given hour.
+      #
+      # @param klass [Class] The class to get the minimum id for.
+      # @param time [Time] The hour to get the minimum id for.
+      # @return [Integer] The minimum id for the class created in the given hour.
       def min_id(klass, time)
         for_class(klass).created_before(time).order(hour: :desc).first&.min_id || 0
       end
 
-      # Calculate the minimum possible id for entries created on a date.
+      # Get the maximum id for a class created in a given hour.
+      #
+      # @param klass [Class] The class to get the maximum id for.
+      # @param time [Time] The hour to get the maximum id for.
+      # @return [Integer] The maximum id for the class created in the given hour.
       def max_id(klass, time)
         id = for_class(klass).created_after(CreatedId.coerce_hour(time)).order(hour: :asc).first&.max_id
 
@@ -37,6 +48,12 @@ module CreatedId
         id
       end
 
+      # Get the minimum and maximum ids for a model created in a given hour. This
+      # method is used in indexing the ranges.
+      #
+      # @param klass [Class] The class to get the id range for.
+      # @param time [Time] The hour to get the id range for.
+      # @return [Array<Integer>] The minimum and maximum ids for the class created in the given hour.
       def id_range(klass, time)
         klass = klass.base_class
         hour = CreatedId.coerce_hour(time)
@@ -58,6 +75,13 @@ module CreatedId
         [finder.minimum(:id), finder.maximum(:id)]
       end
 
+      # Save the minimum and maximum ids for a class created in a given hour.
+      #
+      # @param klass [Class] The class to save the id range for.
+      # @param time [Time] The hour to save the id range for.
+      # @param min_id [Integer] The minimum id for the class created in the given hour.
+      # @param max_id [Integer] The maximum id for the class created in the given hour.
+      # @return [void]
       def save_created_id(klass, time, min_id, max_id)
         record = find_or_initialize_by(class_name: klass.base_class.name, hour: CreatedId.coerce_hour(time))
         record.min_id = min_id

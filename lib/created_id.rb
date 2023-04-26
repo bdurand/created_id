@@ -9,6 +9,7 @@ module CreatedId
   end
 
   class << self
+    # Coerce a time to the beginning of the hour in UTC.
     def coerce_hour(time)
       time = time.to_time.utc
       Time.utc(time.year, time.month, time.day, time.hour)
@@ -31,6 +32,10 @@ module CreatedId
   end
 
   class_methods do
+    # Index the id range for the records created in the given hour.
+    #
+    # @param time [Time] The hour to store the id range for. The value will be coerced to the beginning of the hour.
+    # @return [void]
     def index_ids_for(time)
       min_id, max_id = CreatedId::IdRange.id_range(self, time)
       if min_id && max_id
@@ -41,6 +46,10 @@ module CreatedId
 
   private
 
+  # Verify that the created_at value is within the range of the created_ids for that time period.
+  #
+  # @return [void]
+  # @raise [CreatedId::CreatedAtChangedError] If the created_at value is outside the range of the created_ids for that time period.
   def verify_created_at_created_id!
     # This is the normal case where created at is set to the current time on insert.
     return if id.nil? && created_at_was.nil?
