@@ -3,9 +3,7 @@
 [![Continuous Integration](https://github.com/bdurand/created_id/actions/workflows/continuous_integration.yml/badge.svg)](https://github.com/bdurand/created_id/actions/workflows/continuous_integration.yml)
 [![Ruby Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://github.com/testdouble/standard)
 
-:construction:
-
-The gem is designed to optimize queries for ActiveRecord models by the `created_at` timestamp stored on the model. It can make queries more efficient by pre-calculating the ranges of id's for specific dates.
+The gem is designed to optimize queries for ActiveRecord models that filter by the `created_at` timestamp. It can make queries more efficient by pre-calculating the ranges of id's for specific dates.
 
 The use case this code is designed to solve is when you have a large table with an auto-populated `created_at` column where you want to run queries that filter on that column. In most cases, simply adding an index on the `created_at` column will work just fine., However, once you start constructing more complex queries or adding joins and your table grows very large, the index can become less effective and not even be used at all.
 
@@ -54,9 +52,9 @@ WHERE tasks.status = 'completed'
   AND tasks.created_at < ?
 ```
 
-The query optimizer will have it's choice of several indexes to use to figure out the best query plan. The most important choice will be the first step of the query to reduce the number of rows that the query needs to look at. Depending on the shape of your data, the query optimizer may decide to simply filter by `status` or `user_id` and then perform a table scan on all the rows to filter by `created_at`, not using the index on that column at all.
+The query optimizer will have it's choice of several indexes to use to figure out the best query plan. The most important choice will be the first step of the plan to reduce the number of rows that the query needs to look at. Depending on the shape of your data, the query optimizer may decide to simply filter by `status` or `user_id` and then perform a table scan on all the rows to filter by `created_at`, not using the index on that column at all.
 
-This gem solves for this case by keeping track of the minimum id for each day in a separate table. When you query on the `created_at` column, it will then look up the possible id range and add that to the query, so the SQL becomes:
+This gem solves for this case by keeping track of the range ids created in each hour in a separate table. When you query on the `created_at` column, it will then look up the possible id range and add that to the query, so the SQL becomes:
 
 ```sql
 SELECT COUNT(*)
@@ -72,9 +70,11 @@ WHERE tasks.status = 'completed'
 
 Because the `id` column is the primary key, it will always be indexed and the query optimizer will generally make better decisions about how to filter the query rows. You won't even need the index on `created_at` since the primay key would always be preferred.
 
+Another good use case is if you have some periodic tasks to calculate daily stats for some large tables. You will be able to make these queries more efficient without having to add an index on the `created_at` column that's only used on one query per day.
+
 ## Usage
 
-First, include the `CreatedId` module into your models. Note that any model you wish to include this module in must have a numeric primary key.
+First, include the `CreatedId` module into your models. Note that any model you wish to include this module in must have a numeric primary key and a `created_at` columm.
 
 ```ruby
 class Task < ApplicationRecord
@@ -116,8 +116,6 @@ Don't worry if the id range for a specific hour does not get recorded, the queri
 There is an additional requirement for using this gem that you do not change the `created_at` value after a row is inserted since this can mess up the assumption about the correlation between ids and `created_at` timestamps. An error will be thrown if you try to change a record's timestamp after the id range has been created. The query logic can handle small variations between id order and timestamp order (i.e. if id 1000 has a timestamp a few seconds after id 1001).
 
 ## Installation
-
-_TODO: this tool is currently under construction and has not been published to rubygems.org yet. You can still install directly from GitHub._
 
 Add this line to your application's Gemfile:
 
