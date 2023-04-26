@@ -2,10 +2,8 @@
 
 module CreatedId
   class Engine < Rails::Engine
-    initialize do
-      config.before_eager_load do
-        require_relative "model"
-      end
+    config.before_eager_load do
+      require_relative "id_range"
     end
   end
 end
