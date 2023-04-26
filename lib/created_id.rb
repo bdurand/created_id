@@ -1,31 +1,40 @@
 # frozen_string_literal: true
 
+require_relative "created_id/version"
+require_relative "created_id/engine" if defined?(Rails::Engine)
+
 module CreatedId
+  extend ActiveSupport::Concern
   class CreatedAtChangedError < StandardError
   end
 
-  def self.included(base)
-    unless defined?(ActiveRecord) && base < ActiveRecord::Base
+  class << self
+    def coerce_hour(time)
+      time = time.to_time.utc
+      Time.utc(time.year, time.month, time.day, time.hour)
+    end
+  end
+
+  included do
+    unless defined?(ActiveRecord) && self < ActiveRecord::Base
       raise ArgmentError, "CreatedId can only be included in ActiveRecord models"
     end
 
-    base.extend(ClassMethods)
-
     # Require here so we don't mess up loading the activerecord gem.
-    require_relative "created_id/model"
+    require_relative "created_id/id_range"
 
-    base.scope :created_after, ->(time) { where(arel_table[:created_at].gteq(time).and(arel_table[primary_key].gteq(CreatedId::Model.min_id(self, time)))) }
-    base.scope :created_before, ->(time) { where(arel_table[:created_at].lt(time).and(arel_table[primary_key].lt(CreatedId::Model.max_id(self, time)))) }
-    base.scope :created_between, ->(time_1, time_2) { created_after(time_1).created_before(time_2) }
+    scope :created_after, ->(time) { where(arel_table[:created_at].gteq(time).and(arel_table[primary_key].gteq(CreatedId::IdRange.min_id(self, time)))) }
+    scope :created_before, ->(time) { where(arel_table[:created_at].lt(time).and(arel_table[primary_key].lteq(CreatedId::IdRange.max_id(self, time)))) }
+    scope :created_between, ->(time_1, time_2) { created_after(time_1).created_before(time_2) }
 
-    base.before_save :verify_created_at_created_id!, if: :created_at_changed?
+    before_save :verify_created_at_created_id!, if: :created_at_changed?
   end
 
-  module ClassMethods
-    def store_created_id_for(time)
-      min_id = CreatedId::Model.calculate_min_id(self, time)
-      if min_id
-        CreatedId::Model.save_created_id(self, time, min_id)
+  class_methods do
+    def index_ids_for(time)
+      min_id, max_id = CreatedId::IdRange.id_range(self, time)
+      if min_id && max_id
+        CreatedId::IdRange.save_created_id(self, time, min_id, max_id)
       end
     end
   end
@@ -33,20 +42,14 @@ module CreatedId
   private
 
   def verify_created_at_created_id!
+    # This is the normal case where created at is set to the current time on insert.
     return if id.nil? && created_at_was.nil?
 
-    new_date = (created_at || Time.now).utc.to_date
-    prev_date = created_at_was.utc.to_date if created_at_was
-    finder = CreatedId::Model.for_class(self.class)
+    new_hour = CreatedId.coerce_hour(created_at || Time.now)
+    range = CreatedId::IdRange.for_class(self.class).find_by(hour: new_hour)
 
-    if finder.created_after(new_date).exists?
-      raise CreatedAtChangedError, "created_at cannot be changed after the created id for the date has been stored"
-    end
-
-    if prev_date && prev_date != new_date && finder.created_after(prev_date).exists?
-      raise CreatedAtChangedError, "created_at cannot be changed after the created id for the previous value has been stored"
+    if range && (id < range.min_id || id > range.max_id)
+      raise CreatedAtChangedError, "created_at cannot be changed outside of the range of the created_ids for that time period"
     end
   end
 end
-
-require_relative "created_id/version"
