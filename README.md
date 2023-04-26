@@ -94,10 +94,10 @@ Task.where(user_id: 1000).created_before(7.days.ago)
 Task.created_between(25.hour.ago, 24.hours.ago)
 ```
 
-You'll then need to set up a periodic task to store the id ranges for your models. For each model that includes `CreatedId`, you need to run the `store_created_id_for` once per hour. This task should be run shortly after the top of the hour.
+You'll then need to set up a periodic task to store the id ranges for your models. For each model that includes `CreatedId`, you need to run the `index_ids_for` once per hour. This task should be run shortly after the top of the hour.
 
 ```ruby
-Task.store_created_id_for(1.hour.ago)
+Task.index_ids_for(1.hour.ago)
 ```
 
 Finally, you'll need to run a script to calculate the id ranges for all of your existing data.
@@ -106,7 +106,7 @@ Finally, you'll need to run a script to calculate the id ranges for all of your 
 first_time = Task.first(created_at).utc
 time = Time.utc(first_time.year, first_time.month, first_time.date, first_time.hour)
 while time < Time.now
-  Task.store_created_id_for(time)
+  Task.index_ids_for(time)
   time += 3600
 end
 ```

@@ -35,6 +35,11 @@ ActiveRecord::Base.connection.create_table(:test_model_twos) do |t|
   t.timestamps
 end
 
+ActiveRecord::Base.connection.create_table(:test_model_threes) do |t|
+  t.string :name, null: false
+  t.timestamps
+end
+
 class TestModelOne < ActiveRecord::Base
   include CreatedId
 
@@ -45,7 +50,16 @@ class TestModelTwo < ActiveRecord::Base
   include CreatedId
 end
 
-class TestModelThree < TestModelOne
+class TestModelThree < ActiveRecord::Base
+  include CreatedId
+
+  base_class
+end
+
+class TestModelThreeOne < TestModelThree
+end
+
+class TestModelThreeTwo < TestModelThree
 end
 
 RSpec.configure do |config|
@@ -56,8 +70,9 @@ RSpec.configure do |config|
   config.order = :random
 
   config.after(:each) do
-    CreatedId::Model.unscoped.delete_all
+    CreatedId::IdRange.unscoped.delete_all
     TestModelOne.unscoped.delete_all
     TestModelTwo.unscoped.delete_all
+    TestModelThree.unscoped.delete_all
   end
 end
