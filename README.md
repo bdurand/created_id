@@ -74,7 +74,13 @@ Another good use case is if you have some periodic tasks to calculate daily stat
 
 ## Usage
 
-First, include the `CreatedId` module into your models. Note that any model you wish to include this module in must have a numeric primary key and a `created_at` columm.
+Run the generator to create the database table
+
+```
+  rails created_id_engine:install:migrations
+```
+
+Next, include the `CreatedId` module into your models. Note that any model you wish to include this module in must have a numeric primary key.  If the model is subclassed you will need to include the `CreatedId` module in the parent model.
 
 ```ruby
 class Task < ApplicationRecord
@@ -103,8 +109,8 @@ Task.index_ids_for(1.hour.ago)
 Finally, you'll need to run a script to calculate the id ranges for all of your existing data.
 
 ```ruby
-first_time = Task.first(created_at).utc
-time = Time.utc(first_time.year, first_time.month, first_time.date, first_time.hour)
+first_time = Task.first.created_at.utc
+time = Time.utc(first_time.year, first_time.month, first_time.day, first_time.hour)
 while time < Time.now
   Task.index_ids_for(time)
   time += 3600
