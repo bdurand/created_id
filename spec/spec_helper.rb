@@ -40,6 +40,17 @@ ActiveRecord::Base.connection.create_table(:test_model_threes) do |t|
   t.timestamps
 end
 
+ActiveRecord::Base.connection.create_table(:test_model_fours) do |t|
+  t.string :name, null: false
+  t.timestamps
+end
+
+ActiveRecord::Base.connection.create_table(:test_model_fives) do |t|
+  t.references :test_model_four, null: false
+  t.string :name, null: false
+  t.timestamps
+end
+
 class TestModelOne < ActiveRecord::Base
   include CreatedId
 
@@ -60,6 +71,16 @@ class TestModelThreeOne < TestModelThree
 end
 
 class TestModelThreeTwo < TestModelThree
+end
+
+class TestModelFour < ActiveRecord::Base
+  include CreatedId
+  has_many :test_model_fives, class_name: "TestModelFive"
+end
+
+class TestModelFive < ActiveRecord::Base
+  include CreatedId
+  belongs_to :test_model_four
 end
 
 RSpec.configure do |config|

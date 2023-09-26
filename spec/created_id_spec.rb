@@ -171,18 +171,25 @@ describe CreatedId do
       query = TestModelOne.created_before(Time.new(2023, 4, 18, 0, 2))
       expect(query.to_sql).to include("\"id\" <= 0")
     end
+
+    it "optimizes searches for records created before a time" do
+      one = TestModelOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 2, 2))
+      two = TestModelOne.create!(name: "Two", created_at: Time.new(2023, 4, 18, 2, 41))
+      TestModelOne.index_ids_for(Time.new(2023, 4, 18, 2))
+      query = TestModelOne.created_before(Time.new(2023, 4, 18, 1, 30).in_time_zone("Pacific/Honolulu"))
+      expect(query.to_sql).to include("\"id\" <= #{two.id}")
+    end
   end
 
   describe "created_between" do
     it "finds records created between two time stamps" do
-      one = TestModelOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 0, 1))
-      two = TestModelOne.create!(name: "Two", created_at: Time.new(2023, 4, 18, 0, 3))
-      three = TestModelOne.create!(name: "Three", created_at: Time.new(2023, 4, 2, 0, 0))
+      four = TestModelFour.create!(name: "Four", created_at: Time.new(2023, 4, 18, 0, 1))
+      five = four.test_model_fives.create!(name: "Five", created_at: Time.new(2023, 4, 18, 0, 3))
 
-      TestModelOne.index_ids_for(Date.new(2023, 4, 18))
-      TestModelOne.index_ids_for(Date.new(2023, 4, 2))
+      TestModelFive.index_ids_for(Date.new(2023, 4, 18))
 
-      expect(TestModelOne.created_between(Time.new(2023, 4, 18, 0, 2), Time.new(2023, 4, 18, 0, 5))).to eq([two])
+      query = TestModelFive.created_before(Time.new(2023, 4, 18, 1, 30).in_time_zone("Pacific/Honolulu"), {model: TestModelFour})
+      expect(query.to_sql).to include("\"test_model_fours\".\"id\" <= #{five.id}")
     end
   end
 

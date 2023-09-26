@@ -24,9 +24,17 @@ module CreatedId
     # Require here so we don't mess up loading the activerecord gem.
     require_relative "created_id/id_range"
 
-    scope :created_after, ->(time) { where(arel_table[:created_at].gteq(time).and(arel_table[primary_key].gteq(CreatedId::IdRange.min_id(self, time)))) }
-    scope :created_before, ->(time) { where(arel_table[:created_at].lt(time).and(arel_table[primary_key].lteq(CreatedId::IdRange.max_id(self, time)))) }
-    scope :created_between, ->(time_1, time_2) { created_after(time_1).created_before(time_2) }
+    scope :created_after, ->(time, opts = {}) do
+      opts[:model] ||= self
+      where(opts[:model].arel_table[:created_at].gteq(time).and(opts[:model].arel_table[primary_key].gteq(CreatedId::IdRange.min_id(opts[:model], time))))
+    end
+    scope :created_before, ->(time, opts = {}) do
+      opts[:model] ||= self
+      where(opts[:model].arel_table[:created_at].lt(time).and(opts[:model].arel_table[primary_key].lteq(CreatedId::IdRange.max_id(opts[:model], time))))
+    end
+    scope :created_between, ->(time_1, time_2, opts = {}) do
+      created_after(time_1, opts).created_before(time_2, opts)
+    end
 
     before_save :verify_created_at_created_id!, if: :created_at_changed?
   end
