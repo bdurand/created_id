@@ -1,6 +1,7 @@
 # Created ID
 
 [![Continuous Integration](https://github.com/bdurand/created_id/actions/workflows/continuous_integration.yml/badge.svg)](https://github.com/bdurand/created_id/actions/workflows/continuous_integration.yml)
+[![Regression Test](https://github.com/bdurand/created_id/actions/workflows/regression_test.yml/badge.svg)](https://github.com/bdurand/created_id/actions/workflows/regression_test.yml)
 [![Ruby Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://github.com/testdouble/standard)
 
 The gem is designed to optimize queries for ActiveRecord models that filter by the `created_at` timestamp. It can make queries more efficient by pre-calculating the ranges of id's for specific dates.
