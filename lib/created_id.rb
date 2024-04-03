@@ -1,10 +1,13 @@
 # frozen_string_literal: true
 
-require_relative "created_id/version"
 require_relative "created_id/engine" if defined?(Rails::Engine)
 
 module CreatedId
   extend ActiveSupport::Concern
+
+  autoload :IdRange, "created_id/id_range"
+  autoload :VERSION, "created_id/version"
+
   class CreatedAtChangedError < StandardError
   end
 
@@ -20,9 +23,6 @@ module CreatedId
     unless defined?(ActiveRecord) && self < ActiveRecord::Base
       raise ArgmentError, "CreatedId can only be included in ActiveRecord models"
     end
-
-    # Require here so we don't mess up loading the activerecord gem.
-    require_relative "created_id/id_range"
 
     scope :created_after, ->(time) { where(arel_table[:created_at].gteq(time).and(arel_table[primary_key].gteq(CreatedId::IdRange.min_id(self, time)))) }
     scope :created_before, ->(time) { where(arel_table[:created_at].lt(time).and(arel_table[primary_key].lteq(CreatedId::IdRange.max_id(self, time)))) }
