@@ -24,9 +24,9 @@ module CreatedId
       raise ArgmentError, "CreatedId can only be included in ActiveRecord models"
     end
 
-    scope :created_after, ->(time) { where(arel_table[:created_at].gteq(time).and(arel_table[primary_key].gteq(CreatedId::IdRange.min_id(self, time)))) }
-    scope :created_before, ->(time) { where(arel_table[:created_at].lt(time).and(arel_table[primary_key].lteq(CreatedId::IdRange.max_id(self, time)))) }
-    scope :created_between, ->(time_1, time_2) { created_after(time_1).created_before(time_2) }
+    scope :created_after, ->(time) { created_id_range_query(time...nil) }
+    scope :created_before, ->(time) { created_id_range_query(nil...time) }
+    scope :created_between, ->(time_1, time_2) { created_id_range_query(time_1...time_2) }
 
     before_save :verify_created_at_created_id!, if: :created_at_changed?
   end
@@ -41,6 +41,20 @@ module CreatedId
       if min_id && max_id
         CreatedId::IdRange.save_created_id(self, time, min_id, max_id)
       end
+    end
+
+    def created_id_range_query(time_range)
+      finder = where(created_at: time_range)
+
+      min_id = CreatedId::IdRange.min_id(self, time_range.begin, allow_nil: true) unless time_range.begin.nil?
+      max_id = CreatedId::IdRange.max_id(self, time_range.end, allow_nil: true) unless time_range.end.nil?
+      if min_id || max_id
+        min_id ||= -Float::INFINITY
+        max_id ||= Float::INFINITY
+        finder = finder.where(primary_key => min_id..max_id)
+      end
+
+      finder
     end
   end
 

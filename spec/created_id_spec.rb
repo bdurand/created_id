@@ -59,17 +59,20 @@ describe CreatedId do
   end
 
   describe "created_after" do
-    it "finds records created after a time" do
+    it "finds records created after a time (inclusive" do
       one = TestModelOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 0, 1))
       two = TestModelOne.create!(name: "Two", created_at: Time.new(2023, 4, 18, 0, 2))
       three = TestModelOne.create!(name: "Three", created_at: Time.new(2023, 4, 2, 0, 0))
       TestModelOne.index_ids_for(Time.new(2023, 4, 18, 0).in_time_zone("Pacific/Honolulu"))
 
-      query = TestModelOne.created_after(Time.new(2023, 4, 18, 0, 2))
-      expect(query.first).to eq(two)
+      query = TestModelOne.created_after(Time.new(2023, 4, 2, 0, 0)).order(:created_at)
+      expect(query).to eq([three, one, two])
+
+      query = TestModelOne.created_after(Time.new(2023, 4, 18, 0, 2)).order(:created_at)
+      expect(query).to eq([two])
     end
 
-    it "optimizes searches for records created after a time" do
+    it "optimizes searches for records created after a time)" do
       one = TestModelOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 0, 1))
       two = TestModelOne.create!(name: "Two", created_at: Time.new(2023, 4, 18, 0, 2))
       TestModelOne.index_ids_for(Time.new(2023, 4, 18, 0))
@@ -106,24 +109,24 @@ describe CreatedId do
       expect(query.pluck(:id)).to match_array([two.id, three.id, four.id])
     end
 
-    it "uses zero as the id if there are no ranges stored" do
+    it "does not use an id filter if there are no ranges stored" do
       query = TestModelOne.created_after(Time.new(2023, 4, 18, 0, 2))
-      expect(query.to_sql).to include("\"id\" >= 0")
+      expect(query.to_sql).to_not include("\"id\" >")
     end
   end
 
   describe "created_before" do
-    it "finds records created before a time" do
+    it "finds records created before a time (exclusive)" do
       one = TestModelOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 0, 1))
       two = TestModelOne.create!(name: "Two", created_at: Time.new(2023, 4, 18, 0, 2))
       three = TestModelOne.create!(name: "Three", created_at: Time.new(2023, 4, 19, 0, 0))
       TestModelOne.index_ids_for(Time.new(2023, 4, 18, 0))
 
-      query = TestModelOne.created_before(Time.new(2023, 4, 18, 0, 2))
-      expect(query.last).to eq(one)
+      query = TestModelOne.created_before(Time.new(2023, 4, 18, 0, 2)).order(:created_at)
+      expect(query).to eq([one])
 
-      query = TestModelOne.created_before(Date.new(2023, 4, 19, 0))
-      expect(query.last).to eq(two)
+      query = TestModelOne.created_before(Date.new(2023, 4, 19, 0)).order(:created_at)
+      expect(query).to eq([one, two])
     end
 
     it "optimizes searches for records created before a time" do
@@ -167,9 +170,9 @@ describe CreatedId do
       expect(query.pluck(:id)).to match_array([one.id, two.id, three.id])
     end
 
-    it "uses the max id if there are no ranges stored" do
+    it "does not use an id filter if there are no ranges stored" do
       query = TestModelOne.created_before(Time.new(2023, 4, 18, 0, 2))
-      expect(query.to_sql).to include("\"id\" <= 0")
+      expect(query.to_sql).to_not include("\"id\" <")
     end
   end
 
