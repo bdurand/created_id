@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Omit id clause in queries if ids have not been indexed yet.
 - Update queries to use ranges to better support prepared statements.
 
+### Removed
+
+- Drop support for ActiveRecord 5.0 and 5.1.
+- Drop support for Ruby 2.5.
+
 ## 1.0.1
 
 ### Changed
