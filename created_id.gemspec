@@ -4,9 +4,15 @@ Gem::Specification.new do |spec|
   spec.authors = ["Brian Durand"]
   spec.email = ["bbdurand@gmail.com"]
 
-  spec.summary = "Mechanism for optimizing ActiveRecord queries against the created_at column on tables."
+  spec.summary = "Optimize ActiveRecord queries for filtering large tables on the created_at column by pre-computing id ranges."
   spec.homepage = "https://github.com/bdurand/created_id"
   spec.license = "MIT"
+
+  spec.metadata = {
+    "homepage_uri" => spec.homepage,
+    "source_code_uri" => spec.homepage,
+    "changelog_uri" => "#{spec.homepage}/blob/main/CHANGELOG.md"
+  }
 
   # Specify which files should be added to the gem when it is released.
   # The `git ls-files -z` loads the files in the RubyGem that have been added into git.
@@ -26,9 +32,9 @@ Gem::Specification.new do |spec|
 
   spec.require_paths = ["lib"]
 
-  spec.add_dependency "activerecord", ">= 5.0"
+  spec.add_dependency "activerecord", ">= 6.0"
 
   spec.add_development_dependency "bundler"
 
-  spec.required_ruby_version = ">= 2.5"
+  spec.required_ruby_version = ">= 2.7"
 end

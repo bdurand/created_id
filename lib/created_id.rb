@@ -24,9 +24,8 @@ module CreatedId
       raise ArgmentError, "CreatedId can only be included in ActiveRecord models"
     end
 
-    scope :created_after, ->(time) { where(arel_table[:created_at].gteq(time).and(arel_table[primary_key].gteq(CreatedId::IdRange.min_id(self, time)))) }
-    scope :created_before, ->(time) { where(arel_table[:created_at].lt(time).and(arel_table[primary_key].lteq(CreatedId::IdRange.max_id(self, time)))) }
-    scope :created_between, ->(time_1, time_2) { created_after(time_1).created_before(time_2) }
+    scope :created_after, ->(time) { created_between(time, nil) }
+    scope :created_before, ->(time) { created_between(nil, time) }
 
     before_save :verify_created_at_created_id!, if: :created_at_changed?
   end
@@ -41,6 +40,24 @@ module CreatedId
       if min_id && max_id
         CreatedId::IdRange.save_created_id(self, time, min_id, max_id)
       end
+    end
+
+    # Get records created in the given time range. The time range is based on the
+    # created_at column and is inclusive of the start time and exclusive of the end time.
+    #
+    # @param start_time [Time, nil] The start of the time range. If nil, the range is open-ended.
+    # @param end_time [Time, nil] The end of the time range. If nil, the range is open-ended.
+    # @return [ActiveRecord::Relation] The records created in the given time range.
+    def created_between(start_time, end_time)
+      finder = where(created_at: start_time...end_time)
+
+      min_id = CreatedId::IdRange.min_id(self, start_time, allow_nil: true)
+      max_id = CreatedId::IdRange.max_id(self, end_time, allow_nil: true)
+      if min_id || max_id
+        finder = finder.where(primary_key => min_id..max_id)
+      end
+
+      finder
     end
   end
 
