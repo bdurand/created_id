@@ -27,6 +27,8 @@ module CreatedId
       #   then the method will return 0 if no value is found.
       # @return [Integer, nil] The minimum id for the class created in the given hour.
       def min_id(klass, time, allow_nil: false)
+        return nil if time.nil? && allow_nil
+
         id = for_class(klass).created_before(time).order(hour: :desc).first&.min_id
         id ||= 0 unless allow_nil
         id
@@ -40,6 +42,8 @@ module CreatedId
       #  then the method will return the maximum possible id for the id column.
       # @return [Integer, nil] The maximum id for the class created in the given hour.
       def max_id(klass, time, allow_nil: false)
+        return nil if time.nil? && allow_nil
+
         id = for_class(klass).created_after(CreatedId.coerce_hour(time)).order(hour: :asc).first&.max_id
 
         if id.nil? && !allow_nil

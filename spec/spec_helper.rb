@@ -13,6 +13,11 @@ end
 
 Bundler.require(:default, :test)
 
+# Silence deprecation warning for Rails 8.0
+if ActiveSupport.respond_to?(:to_time_preserves_timezone=)
+  ActiveSupport.to_time_preserves_timezone = :zone
+end
+
 ActiveRecord::Base.establish_connection("adapter" => "sqlite3", "database" => ":memory:")
 
 require_relative "../lib/created_id"

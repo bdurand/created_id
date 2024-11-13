@@ -14,3 +14,8 @@ appraise "activerecord_6" do
   gem "activerecord", "~> 6.0"
   gem "sqlite3", "~> 1.4.0"
 end
+
+appraise "activerecord_5" do
+  gem "activerecord", "~> 5.2"
+  gem "sqlite3", "~> 1.3.0"
+end

@@ -92,8 +92,8 @@ describe CreatedId do
       two = TestModelOne.create!(name: "Two", created_at: Time.new(2023, 4, 18, 0, 2))
       three = TestModelOne.create!(name: "Three", created_at: Time.new(2023, 4, 2, 0, 0))
 
-      query = TestModelOne.created_after(Time.new(2023, 4, 18, 0, 2))
-      expect(query.first).to eq(two)
+      query = TestModelOne.created_after(Time.new(2023, 4, 18, 0, 2)).order(:created_at)
+      expect(query).to eq([two])
     end
 
     it "finds records even only some of the ids are indexed" do
@@ -105,7 +105,7 @@ describe CreatedId do
       TestModelOne.index_ids_for(Time.new(2023, 4, 18, 1))
       TestModelOne.index_ids_for(Time.new(2023, 4, 18, 3))
 
-      query = TestModelOne.created_after(Time.new(2023, 4, 18, 2))
+      query = TestModelOne.created_after(Time.new(2023, 4, 18, 2)).order(:id)
       expect(query.pluck(:id)).to match_array([two.id, three.id, four.id])
     end
 
@@ -150,11 +150,11 @@ describe CreatedId do
       two = TestModelOne.create!(name: "Two", created_at: Time.new(2023, 4, 18, 0, 2))
       three = TestModelOne.create!(name: "Three", created_at: Time.new(2023, 4, 19, 0, 0))
 
-      query = TestModelOne.created_before(Time.new(2023, 4, 18, 0, 2))
-      expect(query.last).to eq(one)
+      query = TestModelOne.created_before(Time.new(2023, 4, 18, 0, 2)).order(:created_at)
+      expect(query).to eq([one])
 
-      query = TestModelOne.created_before(Time.new(2023, 4, 19))
-      expect(query.last).to eq(two)
+      query = TestModelOne.created_before(Time.new(2023, 4, 19)).order(:created_at)
+      expect(query).to eq([one, two])
     end
 
     it "finds records even only some of the ids are indexed" do
@@ -166,7 +166,7 @@ describe CreatedId do
       TestModelOne.index_ids_for(Time.new(2023, 4, 18, 1))
       TestModelOne.index_ids_for(Time.new(2023, 4, 18, 3))
 
-      query = TestModelOne.created_before(Time.new(2023, 4, 18, 4))
+      query = TestModelOne.created_before(Time.new(2023, 4, 18, 4)).order(:id)
       expect(query.pluck(:id)).to match_array([one.id, two.id, three.id])
     end
 

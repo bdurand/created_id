@@ -8,6 +8,8 @@ module CreatedId
   autoload :IdRange, "created_id/id_range"
   autoload :VERSION, "created_id/version"
 
+  OPEN_RANGE_SUPPORTED = Gem::Version.new(RUBY_VERSION) >= Gem::Version.new("2.7")
+
   class CreatedAtChangedError < StandardError
   end
 
@@ -24,9 +26,8 @@ module CreatedId
       raise ArgmentError, "CreatedId can only be included in ActiveRecord models"
     end
 
-    scope :created_after, ->(time) { created_id_range_query(time...nil) }
-    scope :created_before, ->(time) { created_id_range_query(nil...time) }
-    scope :created_between, ->(time_1, time_2) { created_id_range_query(time_1...time_2) }
+    scope :created_after, ->(time) { created_between(time, nil) }
+    scope :created_before, ->(time) { created_between(nil, time) }
 
     before_save :verify_created_at_created_id!, if: :created_at_changed?
   end
@@ -43,14 +44,18 @@ module CreatedId
       end
     end
 
-    def created_id_range_query(time_range)
-      finder = where(created_at: time_range)
+    # Get records created in the given time range. The time range is based on the
+    # created_at column and is inclusive of the start time and exclusive of the end time.
+    #
+    # @param start_time [Time, nil] The start of the time range. If nil, the range is open-ended.
+    # @param end_time [Time, nil] The end of the time range. If nil, the range is open-ended.
+    # @return [ActiveRecord::Relation] The records created in the given time range.
+    def created_between(start_time, end_time)
+      finder = where(created_at: start_time...end_time)
 
-      min_id = CreatedId::IdRange.min_id(self, time_range.begin, allow_nil: true) unless time_range.begin.nil?
-      max_id = CreatedId::IdRange.max_id(self, time_range.end, allow_nil: true) unless time_range.end.nil?
+      min_id = CreatedId::IdRange.min_id(self, start_time, allow_nil: OPEN_RANGE_SUPPORTED)
+      max_id = CreatedId::IdRange.max_id(self, end_time, allow_nil: OPEN_RANGE_SUPPORTED)
       if min_id || max_id
-        min_id ||= -Float::INFINITY
-        max_id ||= Float::INFINITY
         finder = finder.where(primary_key => min_id..max_id)
       end
 
