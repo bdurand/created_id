@@ -4,7 +4,7 @@ Gem::Specification.new do |spec|
   spec.authors = ["Brian Durand"]
   spec.email = ["bbdurand@gmail.com"]
 
-  spec.summary = "Mechanism for optimizing ActiveRecord queries against the created_at column on tables."
+  spec.summary = "Optimize ActiveRecord queries for filtering large tables on the created_at column by pre-computing id ranges."
   spec.homepage = "https://github.com/bdurand/created_id"
   spec.license = "MIT"
 
