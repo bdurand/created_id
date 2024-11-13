@@ -8,8 +8,6 @@ module CreatedId
   autoload :IdRange, "created_id/id_range"
   autoload :VERSION, "created_id/version"
 
-  OPEN_RANGE_SUPPORTED = Gem::Version.new(RUBY_VERSION) >= Gem::Version.new("2.7")
-
   class CreatedAtChangedError < StandardError
   end
 
@@ -53,8 +51,8 @@ module CreatedId
     def created_between(start_time, end_time)
       finder = where(created_at: start_time...end_time)
 
-      min_id = CreatedId::IdRange.min_id(self, start_time, allow_nil: OPEN_RANGE_SUPPORTED)
-      max_id = CreatedId::IdRange.max_id(self, end_time, allow_nil: OPEN_RANGE_SUPPORTED)
+      min_id = CreatedId::IdRange.min_id(self, start_time, allow_nil: true)
+      max_id = CreatedId::IdRange.max_id(self, end_time, allow_nil: true)
       if min_id || max_id
         finder = finder.where(primary_key => min_id..max_id)
       end
