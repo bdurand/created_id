@@ -8,8 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fixed issue with finding id ranges that prevented the query from using using the indexed ids.
-
+- Fixed issue with finding id ranges that prevented the query from using the indexed ids.
 ## 1.1.0
 
 ### Changed
