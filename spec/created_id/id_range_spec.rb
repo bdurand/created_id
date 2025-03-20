@@ -52,15 +52,15 @@ describe CreatedId::IdRange do
     end
 
     it "uses the existing data to help calculate the minimum and maximum ids" do
-      one = TestModelThreeOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 0, 1))
-      two = TestModelThreeOne.create!(name: "Two", created_at: Time.new(2023, 4, 18, 0, 2))
-      three = TestModelThreeTwo.create!(name: "Three", created_at: Time.new(2023, 4, 18, 1, 3))
-      four = TestModelThreeOne.create!(name: "Four", created_at: Time.new(2023, 4, 18, 1, 4))
-      five = TestModelThreeOne.create!(name: "Five", created_at: Time.new(2023, 4, 18, 2, 1))
-      six = TestModelThreeOne.create!(name: "Six", created_at: Time.new(2023, 4, 18, 2, 2))
+      one = TestModelThreeOne.create!(name: "One", created_at: Time.utc(2023, 4, 18, 0, 1))
+      two = TestModelThreeOne.create!(name: "Two", created_at: Time.utc(2023, 4, 18, 0, 2))
+      three = TestModelThreeTwo.create!(name: "Three", created_at: Time.utc(2023, 4, 18, 1, 3))
+      four = TestModelThreeOne.create!(name: "Four", created_at: Time.utc(2023, 4, 18, 1, 4))
+      five = TestModelThreeOne.create!(name: "Five", created_at: Time.utc(2023, 4, 18, 2, 1))
+      six = TestModelThreeOne.create!(name: "Six", created_at: Time.utc(2023, 4, 18, 2, 2))
       CreatedId::IdRange.save_created_id(TestModelThree, Time.utc(2023, 4, 18, 0), one.id, two.id)
       CreatedId::IdRange.save_created_id(TestModelThree, Time.utc(2023, 4, 18, 2), five.id, six.id)
-      expect(CreatedId::IdRange.id_range(TestModelThreeOne, Time.new(2023, 4, 18, 1))).to eq([three.id, four.id])
+      expect(CreatedId::IdRange.id_range(TestModelThreeOne, Time.utc(2023, 4, 18, 1))).to eq([three.id, four.id])
     end
   end
 

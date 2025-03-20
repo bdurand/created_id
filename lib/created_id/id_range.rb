@@ -68,18 +68,17 @@ module CreatedId
         klass = klass.base_class
         hour = CreatedId.coerce_hour(time)
         next_hour = hour + 3600
-        prev_hour = hour - 3600
 
         finder = klass.unscoped.where(created_at: (hour...next_hour))
 
-        prev_id = CreatedId::IdRange.min_id(self, prev_hour)
+        prev_id = CreatedId::IdRange.min_id(klass, hour)
         if prev_id
           finder = finder.where(klass.arel_table[:id].gt(prev_id)) if prev_id > 0
+        end
 
-          next_id = CreatedId::IdRange.min_id(self, next_hour + 3600)
-          if next_id
-            finder = finder.where(klass.arel_table[:id].lt(next_id)) if next_id > prev_id
-          end
+        next_id = CreatedId::IdRange.min_id(klass, next_hour + 3600)
+        if next_id && (prev_id.nil? || next_id > prev_id)
+          finder = finder.where(klass.arel_table[:id].lt(next_id))
         end
 
         [finder.minimum(:id), finder.maximum(:id)]
