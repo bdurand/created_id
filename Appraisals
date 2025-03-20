@@ -13,4 +13,5 @@ end
 appraise "activerecord_6" do
   gem "activerecord", "~> 6.0.0"
   gem "sqlite3", "~> 1.4.0"
+  gem "concurrent-ruby", "1.3.4"
 end
