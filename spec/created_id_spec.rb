@@ -43,6 +43,23 @@ describe CreatedId do
       expect(CreatedId::IdRange.find_by(class_name: "TestModelOne", hour: Time.new(2023, 4, 18, 0)).min_id).to eq(one.id)
     end
 
+    it "does not change the stored range when reindexing an hour that has already been indexed" do
+      one = TestModelOne.create!(name: "One", created_at: Time.utc(2023, 4, 18, 0, 1))
+      two = TestModelOne.create!(name: "Two", created_at: Time.utc(2023, 4, 18, 0, 2))
+      three = TestModelOne.create!(name: "Three", created_at: Time.utc(2023, 4, 18, 0, 3))
+      four = TestModelOne.create!(name: "Four", created_at: Time.utc(2023, 4, 18, 1, 1))
+
+      2.times do
+        TestModelOne.index_ids_for(Time.utc(2023, 4, 18, 0))
+        TestModelOne.index_ids_for(Time.utc(2023, 4, 18, 1))
+      end
+
+      range = CreatedId::IdRange.find_by(class_name: "TestModelOne", hour: Time.utc(2023, 4, 18, 0))
+      expect(range.min_id).to eq(one.id)
+      expect(range.max_id).to eq(three.id)
+      expect(TestModelOne.created_between(Time.utc(2023, 4, 18, 0), Time.utc(2023, 4, 18, 1))).to match_array([one, two, three])
+    end
+
     it "always stores the ids for the base class" do
       one = TestModelThreeOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 0, 1))
       two = TestModelTwo.create!(name: "Two", created_at: Time.new(2023, 4, 18, 0, 2))
@@ -198,14 +215,14 @@ describe CreatedId do
       TestModelOne.index_ids_for(Time.new(2023, 4, 18, 2))
       TestModelOne.index_ids_for(Time.new(2023, 4, 18, 3))
 
-      expect { two.update!(created_at: Time.new(2023, 4, 18, 3)) }.to raise_error { CreatedId::CreatedAtChangedError }
-      expect { two.update!(created_at: Time.new(2023, 4, 18, 1)) }.to raise_error { CreatedId::CreatedAtChangedError }
+      expect { two.update!(created_at: Time.new(2023, 4, 18, 3)) }.to raise_error(CreatedId::CreatedAtChangedError)
+      expect { two.update!(created_at: Time.new(2023, 4, 18, 1)) }.to raise_error(CreatedId::CreatedAtChangedError)
     end
 
     it "does not raise an error when changing the created_at if the created id has not been calculated" do
       one = TestModelOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 1))
       two = TestModelOne.create!(name: "Two", created_at: Time.new(2023, 4, 18, 2))
-      TestModelOne.index_ids_for(Date.new(2023, 4, 18, 1))
+      TestModelOne.index_ids_for(Time.new(2023, 4, 18, 1))
 
       expect { two.update!(created_at: Time.new(2023, 4, 18, 3)) }.to_not raise_error
     end
@@ -214,9 +231,35 @@ describe CreatedId do
       one = TestModelOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 1, 1))
       two = TestModelOne.create!(name: "Two", created_at: Time.new(2023, 4, 18, 1, 2))
       three = TestModelOne.create!(name: "Three", created_at: Time.new(2023, 4, 18, 1, 5))
-      TestModelOne.index_ids_for(Date.new(2023, 4, 18, 1))
+      TestModelOne.index_ids_for(Time.new(2023, 4, 18, 1))
 
       expect { two.update!(created_at: Time.new(2023, 4, 18, 1, 3)) }.to_not raise_error
+    end
+  end
+
+  describe "creating a backdated record" do
+    it "raises an error and rolls back when creating a record in an hour that has already been indexed" do
+      one = TestModelOne.create!(name: "One", created_at: Time.utc(2023, 4, 18, 0, 1))
+      TestModelOne.index_ids_for(Time.utc(2023, 4, 18, 0))
+
+      expect {
+        TestModelOne.create!(name: "Two", created_at: Time.utc(2023, 4, 18, 0, 30))
+      }.to raise_error(CreatedId::CreatedAtChangedError)
+
+      expect(TestModelOne.unscoped.count).to eq(1)
+    end
+
+    it "does not raise an error when creating a backdated record in an hour that has not been indexed" do
+      expect {
+        TestModelOne.create!(name: "One", created_at: Time.utc(2023, 4, 18, 0, 1))
+      }.to_not raise_error
+    end
+
+    it "does not raise an error when creating a record with the current time" do
+      one = TestModelOne.create!(name: "One", created_at: Time.utc(2023, 4, 18, 0, 1))
+      TestModelOne.index_ids_for(Time.utc(2023, 4, 18, 0))
+
+      expect { TestModelOne.create!(name: "Two") }.to_not raise_error
     end
   end
 end

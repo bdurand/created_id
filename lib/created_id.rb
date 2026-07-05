@@ -21,13 +21,14 @@ module CreatedId
 
   included do
     unless defined?(ActiveRecord) && self < ActiveRecord::Base
-      raise ArgmentError, "CreatedId can only be included in ActiveRecord models"
+      raise ArgumentError, "CreatedId can only be included in ActiveRecord models"
     end
 
     scope :created_after, ->(time) { created_between(time, nil) }
     scope :created_before, ->(time) { created_between(nil, time) }
 
     before_save :verify_created_at_created_id!, if: :created_at_changed?
+    after_create :verify_created_id_on_backdated_create!
   end
 
   class_methods do
@@ -71,11 +72,30 @@ module CreatedId
     # This is the normal case where created at is set to the current time on insert.
     return if id.nil? && created_at_was.nil?
 
-    new_hour = CreatedId.coerce_hour(created_at || Time.now)
-    range = CreatedId::IdRange.for_class(self.class).find_by(hour: new_hour)
+    verify_id_in_indexed_range!("created_at cannot be changed outside of the range of the created_ids for that time period")
+  end
+
+  # Verify that a record created with an explicit created_at in an hour that has already
+  # been indexed received an id within the stored range. The id is not known until after
+  # the insert, so this check must run after create; raising here rolls back the insert.
+  # Records created in the current hour skip the check since that hour cannot have been
+  # indexed yet.
+  #
+  # @return [void]
+  # @raise [CreatedId::CreatedAtChangedError] If the record's id is outside the range of the created_ids for its hour.
+  def verify_created_id_on_backdated_create!
+    return if created_at.nil?
+    return if CreatedId.coerce_hour(created_at) == CreatedId.coerce_hour(Time.now)
+
+    verify_id_in_indexed_range!("created_at cannot be set to an hour whose id range has already been indexed")
+  end
+
+  def verify_id_in_indexed_range!(message)
+    hour = CreatedId.coerce_hour(created_at || Time.now)
+    range = CreatedId::IdRange.for_class(self.class).find_by(hour: hour)
 
     if range && (id < range.min_id || id > range.max_id)
-      raise CreatedAtChangedError, "created_at cannot be changed outside of the range of the created_ids for that time period"
+      raise CreatedAtChangedError, message
     end
   end
 end

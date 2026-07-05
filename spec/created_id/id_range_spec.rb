@@ -62,6 +62,23 @@ describe CreatedId::IdRange do
       CreatedId::IdRange.save_created_id(TestModelThree, Time.utc(2023, 4, 18, 2), five.id, six.id)
       expect(CreatedId::IdRange.id_range(TestModelThreeOne, Time.utc(2023, 4, 18, 1))).to eq([three.id, four.id])
     end
+
+    it "returns the same range when recalculating an hour that has already been indexed" do
+      one = TestModelThree.create!(name: "One", created_at: Time.utc(2023, 4, 18, 1, 1))
+      two = TestModelThree.create!(name: "Two", created_at: Time.utc(2023, 4, 18, 1, 2))
+      three = TestModelThree.create!(name: "Three", created_at: Time.utc(2023, 4, 18, 1, 3))
+      CreatedId::IdRange.save_created_id(TestModelThree, Time.utc(2023, 4, 18, 1), one.id, three.id)
+      expect(CreatedId::IdRange.id_range(TestModelThree, Time.utc(2023, 4, 18, 1))).to eq([one.id, three.id])
+    end
+
+    it "does not use the next hour's min id as an upper bound since adjacent ranges can overlap" do
+      one = TestModelThree.create!(id: 98, name: "One", created_at: Time.utc(2023, 4, 18, 5, 30))
+      two = TestModelThree.create!(id: 100, name: "Two", created_at: Time.utc(2023, 4, 18, 5, 59))
+      three = TestModelThree.create!(id: 99, name: "Three", created_at: Time.utc(2023, 4, 18, 6, 0))
+      CreatedId::IdRange.save_created_id(TestModelThree, Time.utc(2023, 4, 18, 5), 98, 100)
+      CreatedId::IdRange.save_created_id(TestModelThree, Time.utc(2023, 4, 18, 6), 99, 99)
+      expect(CreatedId::IdRange.id_range(TestModelThree, Time.utc(2023, 4, 18, 5))).to eq([98, 100])
+    end
   end
 
   describe "save_created_id" do
@@ -85,6 +102,27 @@ describe CreatedId::IdRange do
       expect(record.hour).to eq(Time.utc(2017, 1, 2, 4))
       expect(record.min_id).to eq(11)
       expect(record.max_id).to eq(100)
+    end
+
+    it "retries the save if another process saves the same hour concurrently" do
+      hour = Time.utc(2017, 1, 2, 4)
+      simulated = false
+      allow_any_instance_of(CreatedId::IdRange).to receive(:save!).and_wrap_original do |original|
+        if simulated
+          original.call
+        else
+          simulated = true
+          CreatedId::IdRange.insert_all([{class_name: "TestModelOne", hour: hour, min_id: 1, max_id: 2}])
+          raise ActiveRecord::RecordNotUnique, "duplicate key"
+        end
+      end
+
+      CreatedId::IdRange.save_created_id(TestModelOne, hour, 10, 20)
+
+      expect(CreatedId::IdRange.count).to eq(1)
+      record = CreatedId::IdRange.find_by(class_name: "TestModelOne", hour: hour)
+      expect(record.min_id).to eq(10)
+      expect(record.max_id).to eq(20)
     end
   end
 end
