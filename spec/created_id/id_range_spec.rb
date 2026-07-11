@@ -29,7 +29,7 @@ describe CreatedId::IdRange do
     end
 
     it "returns the maximum id for the specified base class if there are no records for the specified base class" do
-      one = TestModelThreeOne.create!(name: "One")
+      TestModelThreeOne.create!(name: "One")
       two = TestModelThreeTwo.create!(name: "Two")
       expect(CreatedId::IdRange.max_id(TestModelThreeOne, Time.utc(2017, 1, 1, 5, 40))).to eq(two.id)
     end
@@ -45,9 +45,9 @@ describe CreatedId::IdRange do
   describe "id_range" do
     it "returns the minimum and maximum ids for the specified base class and hour" do
       one = TestModelThreeOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 0, 1))
-      two = TestModelThreeOne.create!(name: "Two", created_at: Time.new(2023, 4, 18, 0, 2))
+      TestModelThreeOne.create!(name: "Two", created_at: Time.new(2023, 4, 18, 0, 2))
       three = TestModelThreeTwo.create!(name: "Three", created_at: Time.new(2023, 4, 18, 0, 3))
-      four = TestModelThreeOne.create!(name: "Four", created_at: Time.new(2023, 4, 18, 1, 1))
+      TestModelThreeOne.create!(name: "Four", created_at: Time.new(2023, 4, 18, 1, 1))
       expect(CreatedId::IdRange.id_range(TestModelThreeOne, Time.new(2023, 4, 18, 0))).to eq([one.id, three.id])
     end
 
@@ -65,16 +65,16 @@ describe CreatedId::IdRange do
 
     it "returns the same range when recalculating an hour that has already been indexed" do
       one = TestModelThree.create!(name: "One", created_at: Time.utc(2023, 4, 18, 1, 1))
-      two = TestModelThree.create!(name: "Two", created_at: Time.utc(2023, 4, 18, 1, 2))
+      TestModelThree.create!(name: "Two", created_at: Time.utc(2023, 4, 18, 1, 2))
       three = TestModelThree.create!(name: "Three", created_at: Time.utc(2023, 4, 18, 1, 3))
       CreatedId::IdRange.save_created_id(TestModelThree, Time.utc(2023, 4, 18, 1), one.id, three.id)
       expect(CreatedId::IdRange.id_range(TestModelThree, Time.utc(2023, 4, 18, 1))).to eq([one.id, three.id])
     end
 
     it "does not use the next hour's min id as an upper bound since adjacent ranges can overlap" do
-      one = TestModelThree.create!(id: 98, name: "One", created_at: Time.utc(2023, 4, 18, 5, 30))
-      two = TestModelThree.create!(id: 100, name: "Two", created_at: Time.utc(2023, 4, 18, 5, 59))
-      three = TestModelThree.create!(id: 99, name: "Three", created_at: Time.utc(2023, 4, 18, 6, 0))
+      TestModelThree.create!(id: 98, name: "One", created_at: Time.utc(2023, 4, 18, 5, 30))
+      TestModelThree.create!(id: 100, name: "Two", created_at: Time.utc(2023, 4, 18, 5, 59))
+      TestModelThree.create!(id: 99, name: "Three", created_at: Time.utc(2023, 4, 18, 6, 0))
       CreatedId::IdRange.save_created_id(TestModelThree, Time.utc(2023, 4, 18, 5), 98, 100)
       CreatedId::IdRange.save_created_id(TestModelThree, Time.utc(2023, 4, 18, 6), 99, 99)
       expect(CreatedId::IdRange.id_range(TestModelThree, Time.utc(2023, 4, 18, 5))).to eq([98, 100])

@@ -19,9 +19,9 @@ describe CreatedId do
   describe "index_ids_for" do
     it "can calculates and stores the min id for records created on a date" do
       one = TestModelOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 0, 1))
-      two = TestModelOne.create!(name: "Two", created_at: Time.new(2023, 4, 18, 0, 2))
+      TestModelOne.create!(name: "Two", created_at: Time.new(2023, 4, 18, 0, 2))
       three = TestModelOne.create!(name: "Three", created_at: Time.new(2023, 4, 18, 1, 0))
-      four = TestModelOne.create!(name: "Four", created_at: Time.new(2023, 4, 18, 1, 1))
+      TestModelOne.create!(name: "Four", created_at: Time.new(2023, 4, 18, 1, 1))
 
       TestModelOne.index_ids_for(Time.new(2023, 4, 18, 0))
       TestModelOne.index_ids_for(Time.new(2023, 4, 18, 1).in_time_zone("Pacific/Honolulu"))
@@ -38,7 +38,7 @@ describe CreatedId do
 
     it "ignores the default scope when setting the min id" do
       one = TestModelOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 0, 1), deleted_at: Time.new(2023, 4, 18, 0, 2))
-      two = TestModelOne.create!(name: "Two", created_at: Time.new(2023, 4, 18, 0, 2))
+      TestModelOne.create!(name: "Two", created_at: Time.new(2023, 4, 18, 0, 2))
       TestModelOne.index_ids_for(Time.new(2023, 4, 18, 0))
       expect(CreatedId::IdRange.find_by(class_name: "TestModelOne", hour: Time.new(2023, 4, 18, 0)).min_id).to eq(one.id)
     end
@@ -47,7 +47,7 @@ describe CreatedId do
       one = TestModelOne.create!(name: "One", created_at: Time.utc(2023, 4, 18, 0, 1))
       two = TestModelOne.create!(name: "Two", created_at: Time.utc(2023, 4, 18, 0, 2))
       three = TestModelOne.create!(name: "Three", created_at: Time.utc(2023, 4, 18, 0, 3))
-      four = TestModelOne.create!(name: "Four", created_at: Time.utc(2023, 4, 18, 1, 1))
+      TestModelOne.create!(name: "Four", created_at: Time.utc(2023, 4, 18, 1, 1))
 
       2.times do
         TestModelOne.index_ids_for(Time.utc(2023, 4, 18, 0))
@@ -91,7 +91,7 @@ describe CreatedId do
 
     it "optimizes searches for records created after a time)" do
       one = TestModelOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 0, 1))
-      two = TestModelOne.create!(name: "Two", created_at: Time.new(2023, 4, 18, 0, 2))
+      TestModelOne.create!(name: "Two", created_at: Time.new(2023, 4, 18, 0, 2))
       TestModelOne.index_ids_for(Time.new(2023, 4, 18, 0))
       query = TestModelOne.created_after(Time.new(2023, 4, 18, 0, 2).in_time_zone("Pacific/Honolulu"))
       expect(query.to_sql).to include("\"id\" >= #{one.id}")
@@ -105,16 +105,16 @@ describe CreatedId do
     end
 
     it "finds records even if the ids are not indexed" do
-      one = TestModelOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 0, 1))
+      TestModelOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 0, 1))
       two = TestModelOne.create!(name: "Two", created_at: Time.new(2023, 4, 18, 0, 2))
-      three = TestModelOne.create!(name: "Three", created_at: Time.new(2023, 4, 2, 0, 0))
+      TestModelOne.create!(name: "Three", created_at: Time.new(2023, 4, 2, 0, 0))
 
       query = TestModelOne.created_after(Time.new(2023, 4, 18, 0, 2)).order(:created_at)
       expect(query).to eq([two])
     end
 
     it "finds records even only some of the ids are indexed" do
-      one = TestModelOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 1))
+      TestModelOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 1))
       two = TestModelOne.create!(name: "Two", created_at: Time.new(2023, 4, 18, 2))
       three = TestModelOne.create!(name: "Three", created_at: Time.new(2023, 4, 18, 3))
       four = TestModelOne.create!(name: "Four", created_at: Time.new(2023, 4, 18, 4))
@@ -136,7 +136,7 @@ describe CreatedId do
     it "finds records created before a time (exclusive)" do
       one = TestModelOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 0, 1))
       two = TestModelOne.create!(name: "Two", created_at: Time.new(2023, 4, 18, 0, 2))
-      three = TestModelOne.create!(name: "Three", created_at: Time.new(2023, 4, 19, 0, 0))
+      TestModelOne.create!(name: "Three", created_at: Time.new(2023, 4, 19, 0, 0))
       TestModelOne.index_ids_for(Time.new(2023, 4, 18, 0))
 
       query = TestModelOne.created_before(Time.new(2023, 4, 18, 0, 2)).order(:created_at)
@@ -147,7 +147,7 @@ describe CreatedId do
     end
 
     it "optimizes searches for records created before a time" do
-      one = TestModelOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 2, 2))
+      TestModelOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 2, 2))
       two = TestModelOne.create!(name: "Two", created_at: Time.new(2023, 4, 18, 2, 41))
       TestModelOne.index_ids_for(Time.new(2023, 4, 18, 2))
       query = TestModelOne.created_before(Time.new(2023, 4, 18, 1, 30).in_time_zone("Pacific/Honolulu"))
@@ -155,7 +155,7 @@ describe CreatedId do
     end
 
     it "optimizes searches for records created before a time using the base class" do
-      one = TestModelThreeOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 2, 2))
+      TestModelThreeOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 2, 2))
       two = TestModelThreeOne.create!(name: "Two", created_at: Time.new(2023, 4, 18, 2, 41))
       TestModelThree.index_ids_for(Time.new(2023, 4, 18, 2))
       query = TestModelThreeTwo.created_before(Time.new(2023, 4, 18, 1, 30).in_time_zone("Pacific/Honolulu"))
@@ -165,7 +165,7 @@ describe CreatedId do
     it "finds records even if the ids are not indexed" do
       one = TestModelOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 0, 1))
       two = TestModelOne.create!(name: "Two", created_at: Time.new(2023, 4, 18, 0, 2))
-      three = TestModelOne.create!(name: "Three", created_at: Time.new(2023, 4, 19, 0, 0))
+      TestModelOne.create!(name: "Three", created_at: Time.new(2023, 4, 19, 0, 0))
 
       query = TestModelOne.created_before(Time.new(2023, 4, 18, 0, 2)).order(:created_at)
       expect(query).to eq([one])
@@ -178,7 +178,7 @@ describe CreatedId do
       one = TestModelOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 1))
       two = TestModelOne.create!(name: "Two", created_at: Time.new(2023, 4, 18, 2))
       three = TestModelOne.create!(name: "Three", created_at: Time.new(2023, 4, 18, 3))
-      four = TestModelOne.create!(name: "Four", created_at: Time.new(2023, 4, 18, 4))
+      TestModelOne.create!(name: "Four", created_at: Time.new(2023, 4, 18, 4))
 
       TestModelOne.index_ids_for(Time.new(2023, 4, 18, 1))
       TestModelOne.index_ids_for(Time.new(2023, 4, 18, 3))
@@ -195,9 +195,9 @@ describe CreatedId do
 
   describe "created_between" do
     it "finds records created between two time stamps" do
-      one = TestModelOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 0, 1))
+      TestModelOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 0, 1))
       two = TestModelOne.create!(name: "Two", created_at: Time.new(2023, 4, 18, 0, 3))
-      three = TestModelOne.create!(name: "Three", created_at: Time.new(2023, 4, 2, 0, 0))
+      TestModelOne.create!(name: "Three", created_at: Time.new(2023, 4, 2, 0, 0))
 
       TestModelOne.index_ids_for(Date.new(2023, 4, 18))
       TestModelOne.index_ids_for(Date.new(2023, 4, 2))
@@ -208,9 +208,9 @@ describe CreatedId do
 
   describe "changing created_at" do
     it "raises an error when changing created_at would put the id outside an already calculated range" do
-      one = TestModelOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 1))
+      TestModelOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 1))
       two = TestModelOne.create!(name: "Two", created_at: Time.new(2023, 4, 18, 2))
-      three = TestModelOne.create!(name: "Three", created_at: Time.new(2023, 4, 18, 3))
+      TestModelOne.create!(name: "Three", created_at: Time.new(2023, 4, 18, 3))
       TestModelOne.index_ids_for(Time.new(2023, 4, 18, 1))
       TestModelOne.index_ids_for(Time.new(2023, 4, 18, 2))
       TestModelOne.index_ids_for(Time.new(2023, 4, 18, 3))
@@ -220,7 +220,7 @@ describe CreatedId do
     end
 
     it "does not raise an error when changing the created_at if the created id has not been calculated" do
-      one = TestModelOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 1))
+      TestModelOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 1))
       two = TestModelOne.create!(name: "Two", created_at: Time.new(2023, 4, 18, 2))
       TestModelOne.index_ids_for(Time.new(2023, 4, 18, 1))
 
@@ -228,9 +228,9 @@ describe CreatedId do
     end
 
     it "does not raise an error when changing the created_at if the id range does not change" do
-      one = TestModelOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 1, 1))
+      TestModelOne.create!(name: "One", created_at: Time.new(2023, 4, 18, 1, 1))
       two = TestModelOne.create!(name: "Two", created_at: Time.new(2023, 4, 18, 1, 2))
-      three = TestModelOne.create!(name: "Three", created_at: Time.new(2023, 4, 18, 1, 5))
+      TestModelOne.create!(name: "Three", created_at: Time.new(2023, 4, 18, 1, 5))
       TestModelOne.index_ids_for(Time.new(2023, 4, 18, 1))
 
       expect { two.update!(created_at: Time.new(2023, 4, 18, 1, 3)) }.to_not raise_error
@@ -239,7 +239,7 @@ describe CreatedId do
 
   describe "creating a backdated record" do
     it "raises an error and rolls back when creating a record in an hour that has already been indexed" do
-      one = TestModelOne.create!(name: "One", created_at: Time.utc(2023, 4, 18, 0, 1))
+      TestModelOne.create!(name: "One", created_at: Time.utc(2023, 4, 18, 0, 1))
       TestModelOne.index_ids_for(Time.utc(2023, 4, 18, 0))
 
       expect {
@@ -256,7 +256,7 @@ describe CreatedId do
     end
 
     it "does not raise an error when creating a record with the current time" do
-      one = TestModelOne.create!(name: "One", created_at: Time.utc(2023, 4, 18, 0, 1))
+      TestModelOne.create!(name: "One", created_at: Time.utc(2023, 4, 18, 0, 1))
       TestModelOne.index_ids_for(Time.utc(2023, 4, 18, 0))
 
       expect { TestModelOne.create!(name: "Two") }.to_not raise_error
