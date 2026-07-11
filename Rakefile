@@ -29,7 +29,7 @@ namespace :appraisal do
       Bundler.with_unbundled_env do
         system(
           {
-            "BUNDLE_GEMFILE" => file,
+            "BUNDLE_GEMFILE" => file
           },
           "bundle", "lock", "--update"
         )
