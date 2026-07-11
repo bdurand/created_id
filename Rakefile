@@ -31,9 +31,7 @@ namespace :appraisal do
           {
             "BUNDLE_GEMFILE" => file,
           },
-          "bundle",
-          "lock",
-          "--update",
+          "bundle", "lock", "--update"
         )
       end
     end
