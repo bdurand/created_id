@@ -15,6 +15,14 @@ task :verify_release_branch do
   end
 end
 
+Rake::Task[:release].enhance([:verify_release_branch])
+
+require "rspec/core/rake_task"
+
+RSpec::Core::RakeTask.new(:spec)
+
+task default: [:spec]
+
 namespace :appraisal do
   desc "Update the appraisal gemfiles"
   task :update do
@@ -37,11 +45,3 @@ namespace :appraisal do
     end
   end
 end
-
-Rake::Task[:release].enhance([:verify_release_branch])
-
-require "rspec/core/rake_task"
-
-RSpec::Core::RakeTask.new(:spec)
-
-task default: [:spec]
