@@ -16,13 +16,13 @@ task :verify_release_branch do
 end
 
 namespace :appraisal do
-  desc "Update the locked appraisal gemfiles"
+  desc "Update the appraisal gemfiles"
   task :update do
     Dir.glob("gemfiles/*.gemfile*") do |file|
       File.delete(file) if File.file?(file)
     end
 
-    system "bundle exec appraisal generate"
+    system "bundle exec appraisal generate" || abort("appraisal generate failed")
 
     Dir.glob("gemfiles/*.gemfile") do |file|
       puts "Locking #{file}"
@@ -32,7 +32,7 @@ namespace :appraisal do
             "BUNDLE_GEMFILE" => file
           },
           "bundle", "lock", "--update"
-        )
+        ) || abort("appraisal lock failed on #{file}")
       end
     end
   end
