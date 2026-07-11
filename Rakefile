@@ -9,9 +9,34 @@ end
 require "bundler/gem_tasks"
 
 task :verify_release_branch do
-  unless `git rev-parse --abbrev-ref HEAD`.chomp == "master"
-    warn "Gem can only be released from the master branch"
+  unless `git rev-parse --abbrev-ref HEAD`.chomp == "main"
+    warn "Gem can only be released from the main branch"
     exit 1
+  end
+end
+
+namespace :appraisal do
+  desc "Update the locked appraisal gemfiles"
+  task :update do
+    Dir.glob("gemfiles/*.gemfile*") do |file|
+      File.delete(file) if File.file?(file)
+    end
+
+    system "bundle exec appraisal generate"
+
+    Dir.glob("gemfiles/*.gemfile") do |file|
+      puts "Locking #{file}"
+      Bundler.with_unbundled_env do
+        system(
+          {
+            "BUNDLE_GEMFILE" => file,
+          },
+          "bundle",
+          "lock",
+          "--update",
+        )
+      end
+    end
   end
 end
 
