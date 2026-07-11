@@ -111,11 +111,13 @@ Task.where(user_id: 1000).created_before(7.days.ago)
 Task.created_between(25.hours.ago, 24.hours.ago)
 ```
 
-You'll then need to set up a periodic task to store the id ranges for your models. For each model that includes `CreatedId`, you need to run the `index_ids_for` once per hour. This task should be run shortly after the top of the hour.
+You'll then need to set up a periodic task to store the id ranges for your models. For each model that includes `CreatedId`, you need to run the `index_ids_for` once per hour. This task should be run shortly after the top of the hour, but leave a few minutes of buffer — longer than your longest-running write transaction. A transaction that starts at the end of an hour but commits after the indexer has scanned that hour would otherwise not be visible to the indexer, and if that row happens to be the hour's minimum or maximum id, it would fall outside the stored range and be missed by queries.
 
 ```ruby
 Task.index_ids_for(1.hour.ago)
 ```
+
+Re-running `index_ids_for` for an hour that has already been indexed is safe and recalculates the stored range from the current data. As a self-healing measure, you can periodically re-index the last few hours to pick up any rows that were committed after their hour was first indexed.
 
 Finally, you'll need to run a script to calculate the id ranges for all of your existing data.
 
@@ -130,7 +132,9 @@ end
 
 If an ID range is missing for a specific hour, your queries will still function, but with a broader range of IDs. You can recalculate missing ranges at any time to improve efficiency.
 
-There is an additional requirement for using this gem that you do not change the `created_at` value after a row is inserted since this can mess up the assumption about the correlation between ids and `created_at` timestamps. An error will be thrown if you try to change a record's timestamp after the id range has been created. The query logic can handle small variations between id order and timestamp order (i.e. if id 1000 has a timestamp a few seconds after id 1001).
+There is an additional requirement for using this gem that you do not change the `created_at` value after a row is inserted since this can mess up the assumption about the correlation between ids and `created_at` timestamps. An error will be thrown if you try to change a record's timestamp after the id range has been created, or if you insert a new record with a backdated `created_at` in an hour whose id range has already been indexed. The query logic can handle small variations between id order and timestamp order (i.e. if id 1000 has a timestamp a few seconds after id 1001).
+
+Note that these guards can only check hours that have already been indexed. Changing `created_at` across hours (or inserting backdated rows) into an hour that has *not* been indexed can still leave the row outside the id bounds inferred from neighboring indexed hours. If you need to backfill or correct historical data, re-run `index_ids_for` for the affected hours afterwards.
 
 ## Installation
 

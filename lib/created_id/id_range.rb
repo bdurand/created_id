@@ -71,12 +71,16 @@ module CreatedId
 
         finder = klass.unscoped.where(created_at: (hour...next_hour))
 
-        prev_id = CreatedId::IdRange.min_id(klass, hour)
-        if prev_id
-          finder = finder.where(klass.arel_table[:id].gt(prev_id)) if prev_id > 0
-        end
+        # Lower bound: the min id of the latest indexed hour strictly before this one.
+        # A record in this hour can never have an id at or below the previous indexed
+        # hour's minimum, even when ids are out of order near the boundary.
+        prev_id = for_class(klass).where(hour: nil...hour).order(hour: :desc).first&.min_id
+        finder = finder.where(klass.arel_table[:id].gt(prev_id)) if prev_id && prev_id > 0
 
-        next_id = CreatedId::IdRange.min_id(klass, next_hour + 3600)
+        # Upper bound: the min id of the earliest indexed hour at least two hours after
+        # this one. The immediately following hour is skipped because its id range may
+        # legitimately overlap this hour's when ids are out of order near the boundary.
+        next_id = for_class(klass).created_after(next_hour + 3600).order(hour: :asc).first&.min_id
         if next_id && (prev_id.nil? || next_id > prev_id)
           finder = finder.where(klass.arel_table[:id].lt(next_id))
         end
@@ -92,10 +96,18 @@ module CreatedId
       # @param max_id [Integer] The maximum id for the class created in the given hour.
       # @return [void]
       def save_created_id(klass, time, min_id, max_id)
-        record = find_or_initialize_by(class_name: klass.base_class.name, hour: CreatedId.coerce_hour(time))
-        record.min_id = min_id
-        record.max_id = max_id
-        record.save!
+        retried = false
+        begin
+          record = find_or_initialize_by(class_name: klass.base_class.name, hour: CreatedId.coerce_hour(time))
+          record.min_id = min_id
+          record.max_id = max_id
+          record.save!
+        rescue ActiveRecord::RecordNotUnique
+          # A concurrent process indexed the same hour first; retry to update its record.
+          raise if retried
+          retried = true
+          retry
+        end
       end
     end
 
