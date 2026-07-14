@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "spec_helper"
+require "spec_helper"
 
-describe CreatedId do
+RSpec.describe CreatedId do
   it "has a version number" do
     expect(CreatedId::VERSION).not_to be nil
   end
@@ -142,7 +142,7 @@ describe CreatedId do
       query = TestModelOne.created_before(Time.new(2023, 4, 18, 0, 2)).order(:created_at)
       expect(query).to eq([one])
 
-      query = TestModelOne.created_before(Date.new(2023, 4, 19, 0)).order(:created_at)
+      query = TestModelOne.created_before(Date.new(2023, 4, 19)).order(:created_at)
       expect(query).to eq([one, two])
     end
 

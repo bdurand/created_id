@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "../spec_helper"
+require "spec_helper"
 
-describe CreatedId::IdRange do
+RSpec.describe CreatedId::IdRange do
   describe "min_id" do
     it "returns the minimum id for the specified base class and hour" do
       CreatedId::IdRange.save_created_id(TestModelThree, Time.utc(2017, 1, 1, 5), 1, 100)

@@ -68,11 +68,11 @@ class TestModelThreeTwo < TestModelThree
 end
 
 RSpec.configure do |config|
-  config.expect_with :rspec do |c|
-    c.syntax = :expect
-  end
-
+  config.warnings = true
+  config.disable_monkey_patching!
+  config.default_formatter = "doc" if config.files_to_run.one?
   config.order = :random
+  Kernel.srand config.seed
 
   config.after(:each) do
     CreatedId::IdRange.unscoped.delete_all
