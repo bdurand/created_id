@@ -6,9 +6,12 @@ require "bundler/setup" if File.exist?(ENV["BUNDLE_GEMFILE"])
 
 require "active_record"
 
-require "simplecov"
-SimpleCov.start do
-  add_filter ["/spec/"]
+begin
+  require "simplecov"
+  SimpleCov.start do
+    add_filter ["/spec/"]
+  end
+rescue LoadError
 end
 
 Bundler.require(:default, :test)
