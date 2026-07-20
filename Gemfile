@@ -13,7 +13,7 @@ unless ENV["DEPENDABOT"]
   unless defined?(::Appraisal::Gemfile) && is_a?(::Appraisal::Gemfile)
     gem "appraisal"
     gem "standard", "~> 1.0"
-    gem "simplecov", "~> 0.21", require: false
+    gem "simplecov", require: false
     gem "rake"
     gem "yard"
   end
