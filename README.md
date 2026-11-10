@@ -118,6 +118,52 @@ Task.index_ids_for(1.hour.ago)
 
 Re-running `index_ids_for` for an hour that has already been indexed is safe and recalculates the stored range from the current data. As a self-healing measure, you can periodically re-index the last few hours to pick up any rows that were committed after their hour was first indexed.
 
+### Indexing with ActiveJob
+
+If your application uses ActiveJob, you can schedule `CreatedId::PeriodicJob` to run a few minutes after the top of every hour. It takes no arguments so it can be run from any periodic job scheduler, and it enqueues a `CreatedId::IndexJob` to index the previous hour on all of your CreatedId models (see [Listing CreatedId models](#listing-createdid-models)). For example, with [Solid Queue](https://github.com/rails/solid_queue) in `config/recurring.yml`:
+
+```yaml
+production:
+  created_id:
+    class: CreatedId::PeriodicJob
+    schedule: "5 * * * *"
+```
+
+You can also enqueue `CreatedId::IndexJob` yourself to index a specific hour on all of your models. The time is passed to `index_ids_for` on each model.
+
+```ruby
+CreatedId::IndexJob.perform_later(Time.utc(2025, 1, 1, 2))
+```
+
+The current hour cannot be indexed since records can still be created in it. Enqueuing `CreatedId::IndexJob` for the current hour or a future hour raises a `CreatedId::IndexJob::IncompleteHourError`.
+
+`CreatedId::IndexJob` will retry up to 5 times if indexing a model fails. When the job is retried, models that already have an id range stored for the hour are skipped so that the retry resumes with the model that failed instead of indexing all of the models again.
+
+The jobs are enqueued on the default queue. You can change this in an initializer.
+
+```ruby
+CreatedId::IndexJob.queue_as :low_priority
+```
+
+### Listing CreatedId models
+
+`CreatedId.models` returns all of the models that use CreatedId. This can be used to build your own tooling to index all of your models.
+
+```ruby
+CreatedId.models.each do |model|
+  model.index_ids_for(1.hour.ago)
+end
+```
+
+This method returns all loaded models that include the `CreatedId` module. If your application lazy loads classes (i.e. Rails in development mode or with `config.eager_load` disabled), models that have not been loaded yet will not be returned. You can register these models by class name in an initializer so they are always returned. The classes will not be loaded until `CreatedId.models` is called.
+
+```ruby
+# config/initializers/created_id.rb
+CreatedId.register_models("Task", "Order")
+```
+
+An error will be raised by `CreatedId.models` if a registered model does not include the `CreatedId` module. Only the base class is returned for models that use single table inheritance since the id ranges are shared by all of the classes stored in the same table.
+
 Finally, you'll need to run a script to calculate the id ranges for all of your existing data.
 
 ```ruby

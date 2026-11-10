@@ -5,6 +5,7 @@ ENV["BUNDLE_GEMFILE"] ||= File.expand_path("../Gemfile", __dir__)
 require "bundler/setup" if File.exist?(ENV["BUNDLE_GEMFILE"])
 
 require "active_record"
+require "active_job"
 
 begin
   require "simplecov"
@@ -20,6 +21,9 @@ Bundler.require(:default, :test)
 if ActiveSupport.respond_to?(:to_time_preserves_timezone=)
   ActiveSupport.to_time_preserves_timezone = :zone
 end
+
+ActiveJob::Base.queue_adapter = :test
+ActiveJob::Base.logger = Logger.new(nil)
 
 ActiveRecord::Base.establish_connection("adapter" => "sqlite3", "database" => ":memory:")
 
@@ -78,6 +82,7 @@ RSpec.configure do |config|
   Kernel.srand config.seed
 
   config.after(:each) do
+    ActiveJob::Base.queue_adapter.enqueued_jobs.clear
     CreatedId::IdRange.unscoped.delete_all
     TestModelOne.unscoped.delete_all
     TestModelTwo.unscoped.delete_all
