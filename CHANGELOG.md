@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 1.2.0
+
+### Added
+
+- Added `CreatedId.register_models` to register models that use CreatedId by class name. This allows applications that lazy load classes (i.e. Rails in development mode) to declare their CreatedId models in an initializer without loading them.
+- Added `CreatedId.models` to return all models that use CreatedId. This includes loaded models that include the `CreatedId` module and all registered models. Only the base class is returned for single table inheritance models.
+- Added `CreatedId::IndexJob` ActiveJob to index an hour on all CreatedId models. If the job is retried after a failure, models that already have an id range stored for the hour are skipped. The job will not index the current hour or a future hour.
+- Added `CreatedId::PeriodicJob` ActiveJob that takes no arguments and can be run hourly from a periodic job scheduler to index the previous hour.
+
 ## 1.1.2
 
 ### Fixed

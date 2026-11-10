@@ -6,10 +6,16 @@ module CreatedId
   extend ActiveSupport::Concern
 
   autoload :IdRange, "created_id/id_range"
+  autoload :IndexJob, "created_id/index_job"
+  autoload :PeriodicJob, "created_id/periodic_job"
   autoload :VERSION, "created_id/version"
 
   class CreatedAtChangedError < StandardError
   end
+
+  @registered_models = [].freeze
+  @included_models = [].freeze
+  @models_lock = Mutex.new
 
   class << self
     # Coerce a time to the beginning of the hour in UTC.
@@ -17,12 +23,87 @@ module CreatedId
       time = time.to_time.utc
       Time.utc(time.year, time.month, time.day, time.hour)
     end
+
+    # Register models that use CreatedId by class name. Use this in an initializer when
+    # your application lazy loads classes (i.e. Rails in development mode) so that
+    # +CreatedId.models+ will return them even if they have not been loaded yet. The
+    # classes are not loaded until +CreatedId.models+ is called.
+    #
+    # @example
+    #   CreatedId.register_models("Task", "Order")
+    #
+    # @param class_names [Array<String, Symbol, Class>] The models to register.
+    # @return [void]
+    def register_models(*class_names)
+      names = class_names.flatten.map(&:to_s)
+      @models_lock.synchronize do
+        @registered_models = (@registered_models + names).uniq.freeze
+      end
+      nil
+    end
+
+    # Get the class names that have been registered with +register_models+.
+    #
+    # @return [Array<String>]
+    def registered_models
+      @registered_models.dup
+    end
+
+    # Get all of the models that use CreatedId. This includes all loaded models that
+    # include the CreatedId module as well as all models registered with +register_models+.
+    #
+    # Only the base class is returned for single table inheritance models since the id
+    # ranges are stored for the base class and shared by all of its subclasses. Abstract
+    # classes are not returned.
+    #
+    # @return [Array<Class>] The models sorted by class name.
+    # @raise [ArgumentError] If a registered model does not include CreatedId.
+    # @raise [NameError] If a registered model does not exist.
+    def models
+      classes = @registered_models.map do |class_name|
+        klass = class_name.constantize
+        unless created_id_model?(klass)
+          raise ArgumentError, "#{class_name} is registered with CreatedId but does not include the CreatedId module"
+        end
+        klass
+      end
+
+      # Classes are looked up by name so that the current definition is returned if the
+      # application has reloaded its code.
+      @included_models.each do |class_name|
+        klass = class_name.safe_constantize
+        classes << klass if created_id_model?(klass)
+      end
+
+      classes = classes.reject(&:abstract_class?).map do |klass|
+        base_class = klass.base_class
+        created_id_model?(base_class) ? base_class : klass
+      end
+
+      classes.uniq { |klass| klass.base_class.name }.sort_by(&:name)
+    end
+
+    private
+
+    def created_id_model?(klass)
+      klass.is_a?(Class) && klass.include?(CreatedId)
+    end
+
+    def track_included_model(klass)
+      return if klass.name.nil?
+
+      @models_lock.synchronize do
+        @included_models = (@included_models + [klass.name]).uniq.freeze
+      end
+    end
   end
 
   included do
     unless defined?(ActiveRecord) && self < ActiveRecord::Base
       raise ArgumentError, "CreatedId can only be included in ActiveRecord models"
     end
+
+    CreatedId.send(:track_included_model, self)
 
     scope :created_after, ->(time) { created_between(time, nil) }
     scope :created_before, ->(time) { created_between(nil, time) }
